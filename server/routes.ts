@@ -6,6 +6,7 @@ import {
   analyzeSkillGapWithAi,
   getAiChatbotResponse,
 } from './gemini';
+import { deadlineReminderService } from './services/emailReminderService';
 
 export const apiRouter = Router();
 
@@ -821,6 +822,155 @@ apiRouter.get('/deadlines', async (req: Request, res: Response) => {
 
     all.sort((a, b) => a.diffDays - b.diffDays);
     res.json({ deadlines: all });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== 24-HOUR DEADLINE EMAIL REMINDER SERVICE ====================
+
+// Get reminder service status, upcoming 24h tracked deadlines, and statistics
+apiRouter.get('/reminders/status', async (req: Request, res: Response) => {
+  try {
+    const userId = getAuthUserId(req) || 'usr_student_1';
+    const db = await getDatabase();
+
+    const userRes = db.exec(`SELECT name, email FROM users WHERE id = '${userId.replace(/'/g, "''")}'`);
+    const studentUser = formatQueryResults(userRes)[0] || { name: 'Student', email: 'student@careerbridge.edu' };
+
+    const tracked = await deadlineReminderService.getTrackedOpportunitiesWithDeadlines(userId);
+    const within24h = tracked.filter((t) => t.hoursRemaining >= -1 && t.hoursRemaining <= 24);
+    const sentLogs = await deadlineReminderService.getSentLogs(userId);
+
+    res.json({
+      serviceName: 'CareerBridge 24-Hour Deadline Reminder Service',
+      transport: deadlineReminderService.getTransportName(),
+      status: 'active',
+      recipientEmail: studentUser.email,
+      studentName: studentUser.name,
+      alertThresholdHours: 24,
+      stats: {
+        totalTrackedWithDeadlines: tracked.length,
+        deadlinesWithin24hCount: within24h.length,
+        totalRemindersDispatched: sentLogs.length,
+      },
+      upcomingWithin24h: within24h,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Trigger a check and dispatch simulated email reminders for any deadline within 24 hours
+apiRouter.post('/reminders/scan', async (req: Request, res: Response) => {
+  try {
+    const userId = getAuthUserId(req) || 'usr_student_1';
+    const { referenceTime, forceResend = false, recipientEmail } = req.body || {};
+
+    const refDate = referenceTime ? new Date(referenceTime) : new Date();
+
+    const scanResult = await deadlineReminderService.scanAndSendReminders({
+      userId,
+      referenceTime: refDate,
+      forceResend: Boolean(forceResend),
+      recipientEmailOverride: recipientEmail,
+    });
+
+    res.json({
+      success: true,
+      ...scanResult,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get sent simulated email logs (mailbox simulation)
+apiRouter.get('/reminders/logs', async (req: Request, res: Response) => {
+  try {
+    const userId = getAuthUserId(req) || 'usr_student_1';
+    const logs = await deadlineReminderService.getSentLogs(userId);
+    res.json({ logs });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Clear simulated email reminder history
+apiRouter.delete('/reminders/logs', async (req: Request, res: Response) => {
+  try {
+    const userId = getAuthUserId(req) || 'usr_student_1';
+    await deadlineReminderService.clearSentLogs(userId);
+    res.json({ success: true, message: 'Simulated email reminder logs cleared.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Quick simulation helper: create a tracked opportunity with deadline inside 24 hours
+apiRouter.post('/reminders/simulate-deadline', async (req: Request, res: Response) => {
+  try {
+    const userId = getAuthUserId(req) || 'usr_student_1';
+    const { hoursFromNow = 18, title, companyOrProvider, opportunityType = 'scholarship', autoScan = true } = req.body || {};
+
+    const created = await deadlineReminderService.createSimulatedTrackedDeadline(
+      userId,
+      Number(hoursFromNow),
+      title,
+      companyOrProvider,
+      opportunityType
+    );
+
+    let scanResult = null;
+    if (autoScan) {
+      scanResult = await deadlineReminderService.scanAndSendReminders({
+        userId,
+        forceResend: true,
+      });
+    }
+
+    res.json({
+      success: true,
+      item: created,
+      scanResult,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Send an immediate test simulated email for a specific item
+apiRouter.post('/reminders/send-test', async (req: Request, res: Response) => {
+  try {
+    const userId = getAuthUserId(req) || 'usr_student_1';
+    const { opportunityTitle, companyOrProvider, opportunityType = 'scholarship', deadline, hoursRemaining = 12 } = req.body || {};
+
+    const db = await getDatabase();
+    const userRes = db.exec(`SELECT name, email FROM users WHERE id = '${userId.replace(/'/g, "''")}'`);
+    const studentUser = formatQueryResults(userRes)[0] || { name: 'Student', email: 'student@careerbridge.edu' };
+
+    const simulatedItem = {
+      id: `test_${Date.now()}`,
+      opportunityId: `test_opp_${Date.now()}`,
+      title: opportunityTitle || 'Reliance Foundation Undergraduate Scholarship',
+      companyOrProvider: companyOrProvider || 'Reliance Foundation',
+      opportunityType,
+      status: 'Interested',
+      deadline: deadline || new Date(Date.now() + hoursRemaining * 3600 * 1000).toISOString().slice(0, 16),
+      hoursRemaining: Number(hoursRemaining),
+      source: 'application' as const,
+    };
+
+    const scanResult = await deadlineReminderService.scanAndSendReminders({
+      userId,
+      forceResend: true,
+    });
+
+    res.json({
+      success: true,
+      message: 'Simulated 24-hour reminder email dispatched.',
+      scanResult,
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

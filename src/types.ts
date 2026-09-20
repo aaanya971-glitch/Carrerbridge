@@ -196,3 +196,49 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
 }
+
+export interface SentEmailReminderLog {
+  id: string;
+  userId: string;
+  recipientEmail: string;
+  recipientName: string;
+  opportunityId: string;
+  opportunityTitle: string;
+  opportunityType: string;
+  companyOrProvider: string;
+  deadline: string;
+  hoursRemaining: number;
+  subject: string;
+  bodyHtml: string;
+  bodyText: string;
+  status: string;
+  sentAt: string;
+}
+
+export interface Tracked24hOpportunity {
+  id: string;
+  opportunityId: string;
+  title: string;
+  companyOrProvider: string;
+  opportunityType: string;
+  status: string;
+  deadline: string;
+  hoursRemaining: number;
+  source: 'application' | 'bookmark';
+}
+
+export interface ReminderServiceStatus {
+  serviceName: string;
+  transport: string;
+  status: 'active' | 'idle';
+  recipientEmail: string;
+  studentName: string;
+  alertThresholdHours: number;
+  stats: {
+    totalTrackedWithDeadlines: number;
+    deadlinesWithin24hCount: number;
+    totalRemindersDispatched: number;
+  };
+  upcomingWithin24h: Tracked24hOpportunity[];
+}
+

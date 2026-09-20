@@ -12,12 +12,15 @@ import {
   ChevronRight,
   X,
   FileText,
+  Mail,
 } from 'lucide-react';
 import { ApplicationItem } from '../types';
+import { EmailReminderModal } from '../components/EmailReminderModal';
 
 export const ApplicationTrackerView: React.FC = () => {
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
 
   // New Application Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -121,13 +124,24 @@ export const ApplicationTrackerView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Custom Application</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setIsEmailModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-xs"
+            title="Open 24-hour email reminder service mailbox and alerts"
+          >
+            <Mail className="w-4 h-4 text-rose-500" />
+            <span>24h Email Reminders</span>
+          </button>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Custom Application</span>
+          </button>
+        </div>
       </div>
 
       {/* Kanban Board Columns */}
@@ -200,9 +214,15 @@ export const ApplicationTrackerView: React.FC = () => {
 
                       {/* Deadline */}
                       {app.deadline && (
-                        <div className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
-                          <Clock className="w-3 h-3 text-slate-400" />
-                          <span>Deadline: {app.deadline}</span>
+                        <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500 font-mono">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            <span>Deadline: {app.deadline}</span>
+                          </span>
+                          <span className="text-[9px] font-sans font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-0.5">
+                            <Mail className="w-2.5 h-2.5" />
+                            <span>24h Alert</span>
+                          </span>
                         </div>
                       )}
 
@@ -378,6 +398,13 @@ export const ApplicationTrackerView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* 24-Hour Email Reminder Modal */}
+      <EmailReminderModal
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        onScanCompleted={fetchApplications}
+      />
     </div>
   );
 };

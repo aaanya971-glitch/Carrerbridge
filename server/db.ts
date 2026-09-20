@@ -189,6 +189,24 @@ function initSchemaAndSeed(database: Database) {
       steps_json TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS email_reminders_log (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      recipient_email TEXT NOT NULL,
+      recipient_name TEXT NOT NULL,
+      opportunity_id TEXT NOT NULL,
+      opportunity_title TEXT NOT NULL,
+      opportunity_type TEXT NOT NULL,
+      company_or_provider TEXT NOT NULL,
+      deadline TEXT NOT NULL,
+      hours_remaining REAL NOT NULL,
+      subject TEXT NOT NULL,
+      body_html TEXT NOT NULL,
+      body_text TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'sent_simulated',
+      sent_at TEXT NOT NULL
+    );
   `);
 
   // Seed default Users if empty

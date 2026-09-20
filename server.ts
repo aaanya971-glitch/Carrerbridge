@@ -5,6 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { apiRouter } from './server/routes';
 import { getDatabase } from './server/db';
+import { deadlineReminderService } from './server/services/emailReminderService';
 
 dotenv.config();
 
@@ -51,6 +52,21 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`CareerBridge full-stack server running on http://0.0.0.0:${PORT}`);
+
+    // Background Daemon: Initial 24h deadline reminder scan shortly after startup
+    setTimeout(() => {
+      deadlineReminderService.scanAndSendReminders().catch((err) => {
+        console.error('Background deadline reminder scan error:', err);
+      });
+    }, 5000);
+
+    // Periodic scanner: check every 15 minutes for opportunities entering the 24h window
+    const REMINDER_SCAN_INTERVAL_MS = 15 * 60 * 1000;
+    setInterval(() => {
+      deadlineReminderService.scanAndSendReminders().catch((err) => {
+        console.error('Periodic deadline reminder scan error:', err);
+      });
+    }, REMINDER_SCAN_INTERVAL_MS);
   });
 }
 
