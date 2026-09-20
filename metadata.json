@@ -1,0 +1,6 @@
+{
+  "name": "CareerBridge",
+  "description": "Digital Career & Scholarship Resource Platform for Students with AI Career Recommendations, Resume Analyzer, Scholarship Finder, and Multilingual Career Advisor",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
